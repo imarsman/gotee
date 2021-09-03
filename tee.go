@@ -22,10 +22,7 @@ const (
 var useColour = true // use colour - defaults to true
 
 type saver struct {
-	file *os.File
-
-	// input  chan []byte
-	// done   chan struct{}
+	file   *os.File
 	writer *bufio.Writer
 }
 
@@ -68,9 +65,6 @@ func newSaver(path string, append bool) (*saver, error) {
 }
 
 func (s *saver) write(bytes []byte) {
-	// s.file.Write(bytes)
-	// write a chunk
-	// fmt.Fprint(s.file, string(bytes))
 	if _, err := s.writer.Write(bytes); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
