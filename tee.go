@@ -25,42 +25,34 @@ type saver struct {
 	file *os.File
 
 	// input  chan []byte
-	done   chan struct{}
+	// done   chan struct{}
 	writer *bufio.Writer
 }
 
 func newSaver(path string, append bool) (*saver, error) {
 	s := new(saver)
-	// s.input = make(chan []byte)
-	s.done = make(chan struct{})
 
-	var file *os.File
 	var err error
-	if _, err = os.Stat(path); err == nil {
-		file, err = os.Create(path)
+	mode := os.O_APPEND
+	if append == false {
+		mode = os.O_CREATE
+	}
+	if _, err = os.Stat(path); err != nil {
+		mode = os.O_CREATE
+		s.file, err = os.Create(path)
 		if err != nil {
 			// Something wrong like bad file path
 			fmt.Fprintln(os.Stderr, err.Error())
 			return nil, err
 		}
 	}
-	mode := os.O_APPEND
-	if append == false {
-		mode = os.O_CREATE
-	}
-	// Can't append to a non-existing file, so set to write if file does not
-	// exist.
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		mode = os.O_CREATE
-	}
 
-	file, err = os.OpenFile(path, mode|os.O_WRONLY, 0644)
+	s.file, err = os.OpenFile(path, mode|os.O_WRONLY, 0644)
 	if err != nil {
 		// Something wrong like bad file path
 		fmt.Fprintln(os.Stderr, err.Error())
 		return nil, err
 	}
-	s.file = file
 	s.writer = bufio.NewWriter(s.file)
 
 	// go func() {
@@ -88,18 +80,30 @@ func newSaver(path string, append bool) (*saver, error) {
 }
 
 func (s *saver) write(bytes []byte) {
-	// write a chunk
-	if _, err := s.writer.Write(bytes); err != nil {
-		panic(err)
-	}
-	if err := s.writer.Flush(); err != nil {
-		panic(err)
-	}
+
+	// n, _ := s.file.Seek(0, os.SEEK_END)
+
+	// fmt.Println(n)
+
+	// _, err := s.file.WriteAt(bytes, n)
+	// if err != nil {
+	// 	fmt.Fprintln(os.Stderr, err)
+	// }
+
+	s.file.Write(bytes)
+	// // write a chunk
+	// fmt.Fprint(s.file, string(bytes))
+	// if _, err := s.writer.Write(bytes); err != nil {
+	// 	fmt.Fprintln(os.Stderr, err)
+	// }
+	// if err := s.writer.Flush(); err != nil {
+	// 	fmt.Fprintln(os.Stderr, err)
+	// }
 }
 
 func (s *saver) close() {
 	if err := s.writer.Flush(); err != nil {
-		panic(err)
+		fmt.Fprintln(os.Stderr, err)
 	}
 }
 
@@ -206,13 +210,12 @@ func main() {
 			continue
 		}
 		saver, err := newSaver(args[i], appendFlag)
-		fmt.Println("Adding for file", args[i])
+		// fmt.Println("Adding for file", args[i])
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Probem obtaining saver for pth", args[i])
 			continue
 		}
 		container.addSaver(saver)
-		// fmt.Println(saver.file.Name())
 	}
 	if len(container.savers) == 0 {
 		fmt.Fprintln(os.Stderr, "No valid files to save to")
@@ -222,8 +225,6 @@ func main() {
 	buf := make([]byte, 1024)
 	count := 0
 	for {
-		fmt.Println("count", count)
-		// read a chunk
 		n, err := reader.Read(buf)
 		if err != nil && err != io.EOF {
 			panic(err)
@@ -234,11 +235,8 @@ func main() {
 		// Send bytes to each file saver
 		for i := 0; i < len(container.savers); i++ {
 			s := container.savers[i]
-			fmt.Println("name", s.file.Name(), len(container.savers), i)
 			s.write(buf[0:n])
-			fmt.Println("iterate")
 		}
-		fmt.Println(string(buf[0:n]))
 		count++
 	}
 	for _, s := range container.savers {
