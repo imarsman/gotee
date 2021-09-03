@@ -45,6 +45,15 @@ func newSaver(path string, append bool) (*saver, error) {
 			fmt.Fprintln(os.Stderr, err.Error())
 			return nil, err
 		}
+	} else {
+		if append == false {
+			s.file, err = os.Create(path)
+			if err != nil {
+				// Something wrong like bad file path
+				fmt.Fprintln(os.Stderr, err.Error())
+				return nil, err
+			}
+		}
 	}
 
 	s.file, err = os.OpenFile(path, mode|os.O_WRONLY, 0644)
@@ -55,50 +64,19 @@ func newSaver(path string, append bool) (*saver, error) {
 	}
 	s.writer = bufio.NewWriter(s.file)
 
-	// go func() {
-	// 	// close fi on exit and check for its returned error
-	// 	defer func() {
-	// 		if err := s.file.Close(); err != nil {
-	// 			panic(err)
-	// 		}
-	// 	}()
-	// 	// make a write buffer
-	// 	// buf := make([]byte, 1024)
-
-	// 	for bytes := range s.input {
-	// 		// write a chunk
-	// 		if _, err := s.writer.Write(bytes); err != nil {
-	// 			panic(err)
-	// 		}
-	// 		// if err := s.writer.Flush(); err != nil {
-	// 		// 	panic(err)
-	// 		// }
-	// 	}
-	// }()
-
 	return s, nil
 }
 
 func (s *saver) write(bytes []byte) {
-
-	// n, _ := s.file.Seek(0, os.SEEK_END)
-
-	// fmt.Println(n)
-
-	// _, err := s.file.WriteAt(bytes, n)
-	// if err != nil {
-	// 	fmt.Fprintln(os.Stderr, err)
-	// }
-
-	s.file.Write(bytes)
-	// // write a chunk
+	// s.file.Write(bytes)
+	// write a chunk
 	// fmt.Fprint(s.file, string(bytes))
-	// if _, err := s.writer.Write(bytes); err != nil {
-	// 	fmt.Fprintln(os.Stderr, err)
-	// }
-	// if err := s.writer.Flush(); err != nil {
-	// 	fmt.Fprintln(os.Stderr, err)
-	// }
+	if _, err := s.writer.Write(bytes); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+	}
+	if err := s.writer.Flush(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+	}
 }
 
 func (s *saver) close() {
