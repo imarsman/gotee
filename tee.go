@@ -21,11 +21,26 @@ const (
 )
 
 var useColour = true // use colour - defaults to true
+var c chan (os.Signal)
+
+func init() {
+	c = make(chan os.Signal, 1)
+}
+
+func ignoreSignal() {
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for sig := range c {
+			fmt.Fprintln(os.Stderr, colour(brightRed, "Got", sig.String()))
+		}
+	}()
+}
 
 // fileWriter struct to help manage writing to a file
 type fileWriter struct {
 	file   *os.File
 	writer *bufio.Writer
+	active bool
 }
 
 // newFileWriter properly initialize a new fileWriter, including catching errors
@@ -56,6 +71,7 @@ func newFileWriter(path string, append bool) (*fileWriter, error) {
 		}
 	}
 
+	s.active = true
 	s.file, err = os.OpenFile(path, mode|os.O_WRONLY, 0644)
 	if err != nil {
 		// Something wrong like bad file path
@@ -68,13 +84,16 @@ func newFileWriter(path string, append bool) (*fileWriter, error) {
 }
 
 // write write bytes to the bufio.Writer
-func (s *fileWriter) write(bytes []byte) {
+func (s *fileWriter) write(bytes []byte) error {
 	if _, err := s.writer.Write(bytes); err != nil {
 		fmt.Fprintln(os.Stderr, err)
+		return err
 	}
 	if err := s.writer.Flush(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
+		return err
 	}
+	return nil
 }
 
 // close close the underlying writer
@@ -161,7 +180,7 @@ func main() {
 	// flag.BoolVar(&noColourFlag, "C", false, "no colour output")
 	// useColour = !noColourFlag
 
-	var stdoutFlag bool = false
+	var stdoutFlag bool
 	flag.BoolVar(&stdoutFlag, "S", false, "no standard out")
 
 	var ignoreFlag bool
@@ -183,14 +202,8 @@ func main() {
 	}
 
 	// Handle ignoring signals if flag is set
-	c := make(chan os.Signal, 1)
 	if ignoreFlag == true {
-		signal.Notify(c, os.Interrupt)
-		go func() {
-			for sig := range c {
-				fmt.Fprintln(os.Stderr, colour(brightRed, "Got", sig.String()))
-			}
-		}()
+		ignoreSignal()
 	}
 
 	var readWriter *bufio.ReadWriter
@@ -239,7 +252,12 @@ func main() {
 		// Send bytes to each file saver
 		for i := 0; i < len(container.savers); i++ {
 			s := container.savers[i]
-			s.write(buf[0:n])
+			if s.active {
+				err := s.write(buf[0:n])
+				if err != nil {
+					s.active = false
+				}
+			}
 		}
 		if stdoutFlag {
 			readWriter.Write(buf[:n])

@@ -10,4 +10,5 @@ input is done. As it does so it passes out what is read to standard output.
 * `tee -h` print usage
 * `tee -a` append to existing files
 * `tee -i` ignore sigint
+* `tee -S` do not print stdin to stdout
 * `tee <file1> <file2>` - write to all files in list
