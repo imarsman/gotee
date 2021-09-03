@@ -107,38 +107,44 @@ func (s *fileWriter) close() {
 
 // container holds slice of fileWriters
 type container struct {
-	savers []*fileWriter
+	writers []*fileWriter
 }
 
 // newContainer properly initialize a new container
 func newContainer() *container {
 	c := new(container)
-	c.savers = make([]*fileWriter, 0, 5)
+	c.writers = make([]*fileWriter, 0, 5)
 
 	return c
 }
 
-// addFileWriter add a saver to the container's slice
-func (c *container) addFileWriter(s *fileWriter) {
-	c.savers = append(c.savers, s)
+// addFileWriter add a fileWriter to the container's slice
+func (c *container) addFileWriter(path string, appendToFile bool) (*fileWriter, error) {
+	fileWriter, err := newFileWriter(path, appendToFile)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Probem obtaining fileWriter for pth", path)
+		return nil, err
+	}
+	c.writers = append(c.writers, fileWriter)
+
+	return fileWriter, nil
 }
 
-// write write incoming bytes to all savers
+// write incoming bytes to all fileWriters
 func (c *container) write(bytes []byte) {
-	for _, s := range c.savers {
+	for _, s := range c.writers {
 		s.write(bytes)
 	}
 }
 
-// close call close on all savers
+// close call close on all fileWriters
 func (c *container) close() {
-	for _, s := range c.savers {
+	for _, s := range c.writers {
 		s.close()
 	}
 }
 
 func colour(colour int, input ...string) string {
-
 	str := fmt.Sprint(strings.Join(input, " "))
 	str = strings.Replace(str, "  ", " ", -1)
 
@@ -225,17 +231,15 @@ func main() {
 	// Iterate through file path args
 	for i := 0; i < len(args); i++ {
 		if strings.Contains(args[i], "*") {
+			fmt.Fprintln(os.Stderr, "Ignoring globbing path", args[i])
 			continue
 		}
-		saver, err := newFileWriter(args[i], appendFlag)
-		// fmt.Println("Adding for file", args[i])
+		_, err := container.addFileWriter(args[i], appendFlag)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "Probem obtaining saver for pth", args[i])
-			continue
+			fmt.Fprintln(os.Stderr, "Probem obtaining fileWriter for pth", args[i])
 		}
-		container.addFileWriter(saver)
 	}
-	if len(container.savers) == 0 {
+	if len(container.writers) == 0 {
 		fmt.Fprintln(os.Stderr, "No valid files to save to")
 		os.Exit(1)
 	}
@@ -251,9 +255,9 @@ func main() {
 		if n == 0 {
 			break
 		}
-		// Send bytes to each file saver
-		for i := 0; i < len(container.savers); i++ {
-			s := container.savers[i]
+		// Send bytes to each file fileWriter
+		for i := 0; i < len(container.writers); i++ {
+			s := container.writers[i]
 			if s.active {
 				err := s.write(buf[0:n])
 				if err != nil {
@@ -270,7 +274,7 @@ func main() {
 		}
 	}
 	readWriter.Flush()
-	for _, s := range container.savers {
+	for _, s := range container.writers {
 		s.close()
 	}
 }
