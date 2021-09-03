@@ -142,40 +142,36 @@ func colour(colour int, input ...string) string {
 
 // printHelp print out simple help output
 func printHelp(out *os.File) {
-	fmt.Fprintln(out, colour(brightGreen, os.Args[0], "- a simple tail program"))
+	fmt.Fprintln(out, colour(brightGreen, os.Args[0], "- a simple tee program"))
 	fmt.Fprintln(out, "Usage")
-	fmt.Fprintln(out, "- print tail (or head) n lines of one or more files")
-	fmt.Fprintln(out, "Example: tail -n 10 file1.txt file2.txt")
+	fmt.Fprintln(out, "Takes standard input, saves it to files, and repeats to stdout")
+	fmt.Fprintln(out, "Example: tee -i -a file1.txt file2.txt")
+
 	// Prints to stdout
 	flag.PrintDefaults()
 	os.Exit(0)
 }
 
 func main() {
+
 	var helpFlag bool
 	flag.BoolVar(&helpFlag, "h", false, "print usage")
 
 	// var noColourFlag bool
 	// flag.BoolVar(&noColourFlag, "C", false, "no colour output")
-
 	// useColour = !noColourFlag
+
+	var stdoutFlag bool = false
+	flag.BoolVar(&stdoutFlag, "S", false, "no standard out")
+
 	var ignoreFlag bool
 	flag.BoolVar(&ignoreFlag, "i", false, "ignore sigint")
 
 	var appendFlag bool
-	flag.BoolVar(&appendFlag, "a", false, "append")
+	flag.BoolVar(&appendFlag, "a", false, "append to files if they already exist")
 
 	flag.Parse()
-
-	c := make(chan os.Signal, 1)
-	if ignoreFlag == true {
-		signal.Notify(c, os.Interrupt)
-		go func() {
-			for sig := range c {
-				fmt.Fprintln(os.Stderr, colour(brightRed, "Got", sig.String()))
-			}
-		}()
-	}
+	stdoutFlag = !stdoutFlag
 
 	// args are interpreted as paths
 	args := flag.Args()
@@ -186,15 +182,27 @@ func main() {
 		printHelp(out)
 	}
 
+	// Handle ignoring signals if flag is set
+	c := make(chan os.Signal, 1)
+	if ignoreFlag == true {
+		signal.Notify(c, os.Interrupt)
+		go func() {
+			for sig := range c {
+				fmt.Fprintln(os.Stderr, colour(brightRed, "Got", sig.String()))
+			}
+		}()
+	}
+
 	var readWriter *bufio.ReadWriter
 	br := bufio.NewReader(os.Stdin)
 	bw := bufio.NewWriter(os.Stdout)
+
 	// Use stdin if available
 	stat, _ := os.Stdin.Stat()
 	if (stat.Mode() & os.ModeCharDevice) == 0 {
 		readWriter = bufio.NewReadWriter(br, bw)
 	} else {
-		fmt.Fprintln(os.Stderr, "No input")
+		fmt.Fprintln(os.Stderr, colour(brightRed, "No input. Exiting."))
 		printHelp(os.Stderr)
 	}
 
@@ -233,7 +241,9 @@ func main() {
 			s := container.savers[i]
 			s.write(buf[0:n])
 		}
-		readWriter.Write(buf[:n])
+		if stdoutFlag {
+			readWriter.Write(buf[:n])
+		}
 		count++
 		if err == io.EOF {
 			break
