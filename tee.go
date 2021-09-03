@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"strings"
 
 	"github.com/jwalton/gchalk"
@@ -116,6 +117,7 @@ func (c *container) close() {
 }
 
 func colour(colour int, input ...string) string {
+
 	str := fmt.Sprint(strings.Join(input, " "))
 	str = strings.Replace(str, "  ", " ", -1)
 
@@ -153,15 +155,27 @@ func main() {
 	var helpFlag bool
 	flag.BoolVar(&helpFlag, "h", false, "print usage")
 
-	var noColourFlag bool
-	flag.BoolVar(&noColourFlag, "C", false, "no colour output")
+	// var noColourFlag bool
+	// flag.BoolVar(&noColourFlag, "C", false, "no colour output")
 
-	useColour = !noColourFlag
+	// useColour = !noColourFlag
+	var ignoreFlag bool
+	flag.BoolVar(&ignoreFlag, "i", false, "ignore sigint")
 
 	var appendFlag bool
 	flag.BoolVar(&appendFlag, "a", false, "append")
 
 	flag.Parse()
+
+	c := make(chan os.Signal, 1)
+	if ignoreFlag == true {
+		signal.Notify(c, os.Interrupt)
+		go func() {
+			for sig := range c {
+				fmt.Fprintln(os.Stderr, colour(brightRed, "Got", sig.String()))
+			}
+		}()
+	}
 
 	// args are interpreted as paths
 	args := flag.Args()
