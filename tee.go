@@ -27,11 +27,13 @@ func init() {
 	c = make(chan os.Signal, 1)
 }
 
+// Implement -i flag - ignore sigint
 func ignoreSignal() {
+	// I think os.Interupt will handle sigint
 	signal.Notify(c, os.Interrupt)
 	go func() {
 		for sig := range c {
-			fmt.Fprintln(os.Stderr, colour(brightRed, "Got", sig.String()))
+			fmt.Fprintln(os.Stderr, colour(brightRed, "ignoring", sig.String()))
 		}
 	}()
 }
@@ -181,7 +183,7 @@ func main() {
 	// useColour = !noColourFlag
 
 	var stdoutFlag bool
-	flag.BoolVar(&stdoutFlag, "S", false, "no standard out")
+	flag.BoolVar(&stdoutFlag, "S", false, "do not forward standard input to standard output")
 
 	var ignoreFlag bool
 	flag.BoolVar(&ignoreFlag, "i", false, "ignore sigint")
