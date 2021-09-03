@@ -171,11 +171,13 @@ func main() {
 		printHelp(out)
 	}
 
-	var reader *bufio.Reader
+	var readWriter *bufio.ReadWriter
+	br := bufio.NewReader(os.Stdin)
+	bw := bufio.NewWriter(os.Stdout)
 	// Use stdin if available
 	stat, _ := os.Stdin.Stat()
 	if (stat.Mode() & os.ModeCharDevice) == 0 {
-		reader = bufio.NewReader(os.Stdin)
+		readWriter = bufio.NewReadWriter(br, bw)
 	} else {
 		fmt.Fprintln(os.Stderr, "No input")
 		printHelp(os.Stderr)
@@ -200,12 +202,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	buf := make([]byte, 1024)
+	buf := make([]byte, 2048)
 	count := 0
 	for {
-		n, err := reader.Read(buf)
+		n, err := readWriter.Read(buf)
 		if err != nil && err != io.EOF {
-			panic(err)
+			fmt.Fprintln(os.Stderr, err.Error())
+			break
 		}
 		if n == 0 {
 			break
@@ -215,8 +218,13 @@ func main() {
 			s := container.savers[i]
 			s.write(buf[0:n])
 		}
+		readWriter.Write(buf[:n])
 		count++
+		if err == io.EOF {
+			break
+		}
 	}
+	readWriter.Flush()
 	for _, s := range container.savers {
 		s.close()
 	}
