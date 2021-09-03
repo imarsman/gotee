@@ -21,13 +21,15 @@ const (
 
 var useColour = true // use colour - defaults to true
 
-type saver struct {
+// fileWriter struct to help manage writing to a file
+type fileWriter struct {
 	file   *os.File
 	writer *bufio.Writer
 }
 
-func newSaver(path string, append bool) (*saver, error) {
-	s := new(saver)
+// newFileWriter properly initialize a new fileWriter, including catching errors
+func newFileWriter(path string, append bool) (*fileWriter, error) {
+	s := new(fileWriter)
 
 	var err error
 	mode := os.O_APPEND
@@ -64,7 +66,8 @@ func newSaver(path string, append bool) (*saver, error) {
 	return s, nil
 }
 
-func (s *saver) write(bytes []byte) {
+// write write bytes to the bufio.Writer
+func (s *fileWriter) write(bytes []byte) {
 	if _, err := s.writer.Write(bytes); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
@@ -73,35 +76,39 @@ func (s *saver) write(bytes []byte) {
 	}
 }
 
-func (s *saver) close() {
+// close close the underlying writer
+func (s *fileWriter) close() {
 	if err := s.writer.Flush(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
 }
 
+// container holds slice of fileWriters
 type container struct {
-	savers []*saver
-	done   chan struct{}
+	savers []*fileWriter
 }
 
+// newContainer properly initialize a new container
 func newContainer() *container {
 	c := new(container)
-	c.savers = make([]*saver, 0, 5)
-	c.done = make(chan struct{})
+	c.savers = make([]*fileWriter, 0, 5)
 
 	return c
 }
 
-func (c *container) addSaver(s *saver) {
+// addFileWriter add a saver to the container's slice
+func (c *container) addFileWriter(s *fileWriter) {
 	c.savers = append(c.savers, s)
 }
 
+// write write incoming bytes to all savers
 func (c *container) write(bytes []byte) {
 	for _, s := range c.savers {
 		s.write(bytes)
 	}
 }
 
+// close call close on all savers
 func (c *container) close() {
 	for _, s := range c.savers {
 		s.close()
@@ -183,13 +190,13 @@ func main() {
 		if strings.Contains(args[i], "*") {
 			continue
 		}
-		saver, err := newSaver(args[i], appendFlag)
+		saver, err := newFileWriter(args[i], appendFlag)
 		// fmt.Println("Adding for file", args[i])
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Probem obtaining saver for pth", args[i])
 			continue
 		}
-		container.addSaver(saver)
+		container.addFileWriter(saver)
 	}
 	if len(container.savers) == 0 {
 		fmt.Fprintln(os.Stderr, "No valid files to save to")
