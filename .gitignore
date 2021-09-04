@@ -16,3 +16,4 @@
 test/*.txt
 tee
 out*.txt
+gotee

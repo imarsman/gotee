@@ -15,14 +15,14 @@ output. This is not something I have seen on any other implementations.
 
 ## Usage
 
-* `tee -h` print usage
-* `tee -a` append to existing files
-* `tee -i` ignore sigint
+* `gotee -h` print usage
+* `gotee -a` append to existing files
+* `gotee -i` ignore sigint
   * this is an interesting one. The outcome of using this option is that you
       have to kill the process, as siging (CTL-C) is ignored. As far as I can
       tell I have implemented this correctly.
-* `tee -S` do not forward standard input to standard output
-* `tee <file1> <file2>` - write to all files in list
+* `gotee -S` do not forward standard input to standard output
+* `gotee <file1> <file2>` - write to all files in list
 
 ## Noets
 
@@ -30,5 +30,9 @@ The official `tee` waits for stdin even when nothing has been sent to it. I've
 added support for waiting on keyboard input for string data. CTL-C works to exit
 this. So although this is using input as a string, this is likely not harmful.
 The main stdin reader can handle `cat test.jpg | gotee out.jpg`.
+
+This works to mimic `command | gotee -S out.txt`
+
+`command | dd status=none of=out.txt`
 
 -- Ian Marsman

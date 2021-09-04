@@ -332,7 +332,7 @@ func main() {
 		}
 		count++
 	}
-	// readWriter.Write([]byte("EOF"))
+
 	readWriter.Flush()
 	for _, s := range container.fileWriters {
 		s.close()
