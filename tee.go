@@ -291,7 +291,9 @@ func main() {
 	}
 
 	if ignoreFlag {
-		// wait for sigint, or with -i option, kill
+		// Wait for sigint, or with -i option, kill. Doing it this way allows
+		// the interrupt handler to work and for the channel to prevent exit
+		// here on interrupt.
 		doneChannel <- true
 	}
 }
