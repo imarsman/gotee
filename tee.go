@@ -20,8 +20,20 @@ const (
 	noColour // Can use to default to no colour output
 )
 
+// This package is designed to allow for easy intake of standard input and
+// logical writing of the contents of standard intput to one or more files
+// specified by the invocation of this command. Most of the logic happens at the
+// end of the main method.
+// This initially was supposed to use channels for data passing, but the
+// iterative nature of the processing of incoming data allows for a less complex
+// method of sending the bytes currently being processed to each file being
+// written.
+
 var useColour = true // use colour - defaults to true
 var c chan (os.Signal)
+
+// Used to prevent exit on siging with -i option
+var doneChannel = make(chan bool)
 
 func init() {
 	c = make(chan os.Signal, 1)
@@ -276,5 +288,10 @@ func main() {
 	readWriter.Flush()
 	for _, s := range container.writers {
 		s.close()
+	}
+
+	if ignoreFlag {
+		// wait for sigint, or with -i option, kill
+		doneChannel <- true
 	}
 }
