@@ -26,7 +26,7 @@ import (
 
 func TestGetCreate(t *testing.T) {
 	is := is.New(t)
-	s, err := newSaver("test/test.1.txt", false)
+	s, err := newFileWriter("test/test.1.txt", false)
 	is.NoErr(err)
 	s.write([]byte("hello\n"))
 	s.write([]byte("bob\n"))
