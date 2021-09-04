@@ -241,16 +241,34 @@ func main() {
 	if (stat.Mode() & os.ModeCharDevice) == 0 {
 		readWriter = bufio.NewReadWriter(br, bw)
 	} else {
+		container := newContainer()
 		// Wait on keyboard input. Exit with CTL-C.
 		readWriter = bufio.NewReadWriter(br, bw)
-		container := newContainer()
-		container.addFileWriter(args[0], appendFlag)
-		for {
-			input, _ := readWriter.ReadString('\n')
-			err := container.fileWriters[0].write([]byte(input))
-			container.fileWriters[0].writer.Flush()
+		// Iterate through file path args to make file writers
+		for i := 0; i < len(args); i++ {
+			if strings.Contains(args[i], "*") {
+				fmt.Fprintln(os.Stderr, "Ignoring globbing path", args[i])
+				continue
+			}
+			_, err := container.addFileWriter(args[i], appendFlag)
 			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
+				fmt.Fprintln(os.Stderr, "Probem obtaining fileWriter for pth", args[i])
+			}
+		}
+		for {
+			// Read new line of input
+			input, _ := readWriter.ReadString('\n')
+			// Write line of input to all fileWriters
+			for i := 0; i < len(container.fileWriters); i++ {
+				fileWriter := container.fileWriters[i]
+				if fileWriter.active {
+					err := fileWriter.write([]byte(input))
+					fileWriter.writer.Flush()
+					if err != nil {
+						fmt.Fprintln(os.Stderr, err)
+						fileWriter.active = false
+					}
+				}
 			}
 		}
 	}
