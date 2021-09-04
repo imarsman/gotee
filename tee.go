@@ -119,13 +119,13 @@ func (s *fileWriter) close() {
 
 // container holds slice of fileWriters
 type container struct {
-	writers []*fileWriter
+	fileWriters []*fileWriter
 }
 
 // newContainer properly initialize a new container
 func newContainer() *container {
 	c := new(container)
-	c.writers = make([]*fileWriter, 0, 5)
+	c.fileWriters = make([]*fileWriter, 0, 5)
 
 	return c
 }
@@ -137,21 +137,21 @@ func (c *container) addFileWriter(path string, appendToFile bool) (*fileWriter, 
 		fmt.Fprintln(os.Stderr, "Probem obtaining fileWriter for pth", path)
 		return nil, err
 	}
-	c.writers = append(c.writers, fileWriter)
+	c.fileWriters = append(c.fileWriters, fileWriter)
 
 	return fileWriter, nil
 }
 
 // write incoming bytes to all fileWriters
 func (c *container) write(bytes []byte) {
-	for _, s := range c.writers {
+	for _, s := range c.fileWriters {
 		s.write(bytes)
 	}
 }
 
 // close call close on all fileWriters
 func (c *container) close() {
-	for _, s := range c.writers {
+	for _, s := range c.fileWriters {
 		s.close()
 	}
 }
@@ -230,7 +230,7 @@ func main() {
 	br := bufio.NewReader(os.Stdin)
 	bw := bufio.NewWriter(os.Stdout)
 
-	// Use stdin if available
+	// Use stdin if available, otherwise exit, as stdin is what this is all about.
 	stat, _ := os.Stdin.Stat()
 	if (stat.Mode() & os.ModeCharDevice) == 0 {
 		readWriter = bufio.NewReadWriter(br, bw)
@@ -251,46 +251,50 @@ func main() {
 			fmt.Fprintln(os.Stderr, "Probem obtaining fileWriter for pth", args[i])
 		}
 	}
-	if len(container.writers) == 0 {
+	if len(container.fileWriters) == 0 {
 		fmt.Fprintln(os.Stderr, "No valid files to save to")
 		os.Exit(1)
 	}
 
 	buf := make([]byte, 2048)
 	count := 0
+	eof := false // eof indicates actual ending of input (plus err.EOF)
 	for {
 		n, err := readWriter.Read(buf)
 		if err != nil && err != io.EOF {
 			fmt.Fprintln(os.Stderr, err.Error())
 			break
 		}
-		if n == 0 {
+		if n == 0 && err == io.EOF {
+			eof = true
 			break
 		}
 		// Send bytes to each file fileWriter
-		for i := 0; i < len(container.writers); i++ {
-			s := container.writers[i]
-			if s.active {
-				err := s.write(buf[0:n])
+		for i := 0; i < len(container.fileWriters); i++ {
+			fileWriter := container.fileWriters[i]
+			if fileWriter.active {
+				err := fileWriter.write(buf[0:n])
+				fileWriter.writer.Flush()
 				if err != nil {
-					s.active = false
+					fileWriter.active = false
 				}
 			}
 		}
 		if stdoutFlag {
-			readWriter.Write(buf[:n])
+			readWriter.Write(buf[0:n])
+			// The write method for fileWriter.write does flush.
+			readWriter.Flush()
 		}
 		count++
-		if err == io.EOF {
-			break
-		}
 	}
+	// readWriter.Write([]byte("EOF"))
 	readWriter.Flush()
-	for _, s := range container.writers {
+	for _, s := range container.fileWriters {
 		s.close()
 	}
 
-	if ignoreFlag {
+	// If we have received an EOF we don't need to hang around.
+	if ignoreFlag && !eof {
 		// Wait for sigint, or with -i option, kill. Doing it this way allows
 		// the interrupt handler to work and for the channel to prevent exit
 		// here on interrupt.

@@ -24,5 +24,9 @@ output. This is not something I have seen on any other implementations.
 * `tee -S` do not forward standard input to standard output
 * `tee <file1> <file2>` - write to all files in list
 
+## Noets
+
+The official tee waits for stdin even when nothing has been sent to it. This one
+currently does not. I have to decide if that is waht I want to do.
 
 -- Ian Marsman
