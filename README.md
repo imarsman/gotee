@@ -19,8 +19,11 @@ output. This is not something I have seen on any other implementations.
 * `gotee -a` append to existing files
 * `gotee -i` ignore sigint
   * this is an interesting one. The outcome of using this option is that you
-      have to kill the process, as siging (CTL-C) is ignored. As far as I can
-      tell I have implemented this correctly.
+      have to kill the process, as sigint (CTL-C) is ignored. As far as I can
+      tell I have implemented this correctly. The way that I got this working
+      required an added channel wait in the case of the use of the `-i` (ignore)
+      flag. I am not sure I handled this right or at least am not sure I
+      understand why usng the conditional channel wait was required.
 * `gotee -S` do not forward standard input to standard output
 * `gotee <file1> <file2>` - write to all files in list
 
