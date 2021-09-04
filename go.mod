@@ -1,4 +1,4 @@
-module github.com/imarsman/tee
+module github.com/imarsman/gotee
 
 go 1.16
 
