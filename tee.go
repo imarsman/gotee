@@ -216,6 +216,11 @@ func main() {
 	// args are interpreted as paths
 	args := flag.Args()
 
+	if helpFlag {
+		out := os.Stderr
+		printHelp(out)
+	}
+
 	if len(args) == 0 {
 		out := os.Stderr
 		fmt.Fprintln(out, colour(brightRed, "No files specified. Exiting with usage information."))
