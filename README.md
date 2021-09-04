@@ -1,5 +1,5 @@
-# tee
-An implementation of tee in Go
+# tee (gotee)
+An implementation of tee in Go.
 
 This program, which is by no means original, takes in standard input and for
 each file specified either appends or writes to each file until the standard
@@ -26,7 +26,7 @@ output. This is not something I have seen on any other implementations.
 
 ## Noets
 
-The official tee waits for stdin even when nothing has been sent to it. I've
+The official `tee` waits for stdin even when nothing has been sent to it. I've
 added support for waiting on keyboard input for string data. CTL-C works to exit
 this. So although this is using input as a string, this is likely not harmful.
 The main stdin reader can handle `cat test.jpg | gotee out.jpg`.
