@@ -236,14 +236,14 @@ func main() {
 	br := bufio.NewReader(os.Stdin)
 	bw := bufio.NewWriter(os.Stdout)
 
+	readWriter = bufio.NewReadWriter(br, bw)
+
 	// Use stdin if available, otherwise exit, as stdin is what this is all about.
 	stat, _ := os.Stdin.Stat()
 	if (stat.Mode() & os.ModeCharDevice) == 0 {
-		readWriter = bufio.NewReadWriter(br, bw)
 	} else {
 		container := newContainer()
 		// Wait on keyboard input. Exit with CTL-C.
-		readWriter = bufio.NewReadWriter(br, bw)
 		// Iterate through file path args to make file writers
 		for i := 0; i < len(args); i++ {
 			if strings.Contains(args[i], "*") {
@@ -257,12 +257,23 @@ func main() {
 		}
 		for {
 			// Read new line of input
-			input, _ := readWriter.ReadString('\n')
+			input, isPrefix, err := readWriter.ReadLine()
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+			}
+			if isPrefix {
+				fmt.Fprintln(os.Stderr, "line too long")
+			}
 			// Write line of input to all fileWriters
 			for i := 0; i < len(container.fileWriters); i++ {
 				fileWriter := container.fileWriters[i]
 				if fileWriter.active {
-					err := fileWriter.write([]byte(input))
+					err := fileWriter.write(
+						[]byte(
+							fmt.Sprintf(
+								"%s\n",
+								string(input),
+							)))
 					fileWriter.writer.Flush()
 					if err != nil {
 						fmt.Fprintln(os.Stderr, err)
