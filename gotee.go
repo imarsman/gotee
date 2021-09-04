@@ -243,7 +243,7 @@ func main() {
 	if (stat.Mode() & os.ModeCharDevice) == 0 {
 	} else {
 		container := newContainer()
-		// Wait on keyboard input. Exit with CTL-C.
+		// Wait on keyboard input. Exit with Control-C.
 		// Iterate through file path args to make file writers
 		for i := 0; i < len(args); i++ {
 			if strings.Contains(args[i], "*") {
