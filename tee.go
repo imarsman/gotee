@@ -144,6 +144,7 @@ func (c *container) addFileWriter(path string, appendToFile bool) (*fileWriter, 
 
 // write incoming bytes to all fileWriters
 func (c *container) write(bytes []byte) {
+	fmt.Println("got", string(bytes))
 	for _, s := range c.fileWriters {
 		s.write(bytes)
 	}
@@ -235,8 +236,18 @@ func main() {
 	if (stat.Mode() & os.ModeCharDevice) == 0 {
 		readWriter = bufio.NewReadWriter(br, bw)
 	} else {
-		fmt.Fprintln(os.Stderr, colour(brightRed, "No input. Exiting."))
-		printHelp(os.Stderr)
+		// Wait on keyboard input. Exit with CTL-C.
+		readWriter = bufio.NewReadWriter(br, bw)
+		container := newContainer()
+		container.addFileWriter(args[0], appendFlag)
+		for {
+			input, _ := readWriter.ReadString('\n')
+			err := container.fileWriters[0].write([]byte(input))
+			container.fileWriters[0].writer.Flush()
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+			}
+		}
 	}
 
 	container := newContainer()

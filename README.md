@@ -26,7 +26,9 @@ output. This is not something I have seen on any other implementations.
 
 ## Noets
 
-The official tee waits for stdin even when nothing has been sent to it. This one
-currently does not. I have to decide if that is waht I want to do.
+The official tee waits for stdin even when nothing has been sent to it. I've
+added support for waiting on keyboard input for string data. CTL-C works to exit
+this. So although this is using input as a string, this is likely not harmful.
+The main stdin reader can handle `cat test.jpg | gotee out.jpg`.
 
 -- Ian Marsman
