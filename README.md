@@ -7,24 +7,24 @@ input is done. As it does so it passes out what is read to standard output.
 
 The `tee` command is a handy way, and one of the only ways to branch standard
 input to save to one or more files and to reproduce standard input as standard
-output for consumers down the line. The `-a` (append) and `-i` (ignore sigint)
-parameters present in the original `tee` are supported here. Additionally, to
-allow for the avoidance of redirecting standard output to /dev/null, the `-S`
-option allows for the avoidance of carry-over of standard input to standard
-output. This is not something I have seen on any other implementations.
+output for consumers down the line.  Additionally, to allow for the avoidance of
+redirecting standard output to /dev/null, the `-S` option allows for the
+avoidance of carry-over of standard input to standard output. This is not
+something I have seen on any other implementations.
 
 ## Usage
 
 * `gotee -h` print usage
 * `gotee -a` append to existing files
-* `gotee -i` ignore sigint
-  * I don't quite know what to do with this. I have currently implemented this
-    flag to detect an interrupt and try to cleanly shut everything down. If an
-    interrupt is received that means that whatever is piping to standard input
-    would have been shut down and therefore there would be no standard input to
-    recieve. I would be happy to be corrected on this. In theory I could make
-    the loop through standard input a function internal to main and restart that
-    function on interrupt, but I don't see the point of that.
+* `gotee -i` ignore interrupt - not implemented but is in original tee
+  * I don't quite know what to do with this. If an interrupt is received that
+    means that whatever is piping to standard input would have been shut down
+    and therefore there would be no standard input to recieve. I would be happy
+    to be corrected on this. In theory I could make the loop through standard
+    input a function internal to main and restart that function on interrupt,
+    but I don't see the point of that. What I have done is in all cases
+    intercept an interrupt signal and shut things down as gracefully as
+    possible.
 * `gotee -S` do not forward standard input to standard output
 * `gotee <file1> <file2>` - write to all files in list
 

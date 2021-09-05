@@ -203,17 +203,20 @@ func main() {
 	var stdoutFlag bool
 	flag.BoolVar(&stdoutFlag, "S", false, "do not forward standard input to standard output")
 
-	var ignoreFlag bool
-	flag.BoolVar(&ignoreFlag, "i", false, "ignore sigint")
+	// Not using ignore as I don't know what it is good for
+	// var ignoreFlag bool
+	// flag.BoolVar(&ignoreFlag, "i", false, "ignore interrupt")
 
 	var appendFlag bool
 	flag.BoolVar(&appendFlag, "a", false, "append to files if they already exist")
 
 	flag.Parse()
+
 	stdoutFlag = !stdoutFlag
 
 	// args are interpreted as paths
 	args := flag.Args()
+	fmt.Println("args", args)
 
 	if helpFlag {
 		out := os.Stderr
@@ -226,12 +229,9 @@ func main() {
 		printHelp(out)
 	}
 
-	// Handle ignoring signals if flag is set. I am not sure what the ignore
-	// flag does on the original tee, but here we can at least clean up then
-	// exit.
-	// NOTE: making this default unless and until a good reason to do things
-	// differently is discovered.
-	// if ignoreFlag == true {
+	// Handle interrupt (Control-C) signal. Doing this to do cleanup. The -i flag in the
+	// official tee stops interrupt from working. I don't know what this does
+	// beyond letting final write happen, which the below goroutine does in all cases.
 	signal.Notify(c, os.Interrupt)
 	go func() {
 		for sig := range c {
@@ -249,7 +249,6 @@ func main() {
 			os.Exit(0)
 		}
 	}()
-	// }
 
 	// Use stdin if available, otherwise exit, as stdin is what this is all about.
 	stat, _ := os.Stdin.Stat()
@@ -367,7 +366,7 @@ func main() {
 	// }
 
 	// if ignoreFlag {
-	// 	// Wait for sigint, or with -i option, kill. Doing it this way allows
+	// 	// Wait for interupt, or with -i option, kill. Doing it this way allows
 	// 	// the interrupt handler to work and for the channel to prevent exit
 	// 	// here on interrupt.
 	// 	doneChannel <- true
