@@ -15,7 +15,10 @@ something I have seen on any other implementations.
 ## Usage
 
 * `gotee -h` print usage
-* `gotee -a` append to existing files
+* `gotee` no files specified - use keyboard input instead of stdin and exit on
+  Control-C
+* `gotee <file1> <file2>` - write to one or more files specified as last arguments
+* `gotee -a <file> <file>` append to existing files
 * `gotee -i` ignore interrupt - not implemented but is in original tee
   * I don't quite know what to do with this. If an interrupt is received that
     means that whatever is piping to standard input would have been shut down
@@ -25,8 +28,7 @@ something I have seen on any other implementations.
     but I don't see the point of that. What I have done is in all cases
     intercept an interrupt signal and shut things down as gracefully as
     possible.
-* `gotee -S` do not forward standard input to standard output
-* `gotee <file1> <file2>` - write to all files in list
+* `gotee -S <file> <file>` do not forward standard input to standard output
 
 ## Noets
 
