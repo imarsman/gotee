@@ -35,17 +35,37 @@ var c chan (os.Signal)
 // Used to prevent exit on siging with -i option
 var doneChannel = make(chan bool)
 
+var readWriter *bufio.ReadWriter
+var fileContainer *container
+var stop bool
+
+// var eof bool = false
+
 func init() {
 	c = make(chan os.Signal, 1)
+	fileContainer = newContainer()
+
+	br := bufio.NewReader(os.Stdin)
+	bw := bufio.NewWriter(os.Stdout)
+
+	readWriter = bufio.NewReadWriter(br, bw)
 }
 
 // Implement -i flag - ignore sigint
 func ignoreSignal() {
-	// I think os.Interupt will handle sigint
+	// Intercept the sigint interrupt signal. I think the idea with the original
+	// tee command -i flag is to allow for a graceful exit. This perhaps should
+	// be default behaviour with follow.
 	signal.Notify(c, os.Interrupt)
 	go func() {
 		for sig := range c {
-			fmt.Fprintln(os.Stderr, colour(brightRed, "ignoring", sig.String()))
+			stop = true
+			readWriter.Writer.Flush()
+			for _, s := range fileContainer.fileWriters {
+				s.close()
+			}
+			fmt.Fprintln(os.Stderr, colour(brightRed, "got signal", sig.String()))
+			os.Exit(0)
 		}
 	}()
 }
@@ -115,6 +135,7 @@ func (s *fileWriter) close() {
 	if err := s.writer.Flush(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
+	s.file.Close()
 }
 
 // container holds slice of fileWriters
@@ -232,17 +253,11 @@ func main() {
 		ignoreSignal()
 	}
 
-	var readWriter *bufio.ReadWriter
-	br := bufio.NewReader(os.Stdin)
-	bw := bufio.NewWriter(os.Stdout)
-
-	readWriter = bufio.NewReadWriter(br, bw)
-
 	// Use stdin if available, otherwise exit, as stdin is what this is all about.
 	stat, _ := os.Stdin.Stat()
 	if (stat.Mode() & os.ModeCharDevice) == 0 {
 	} else {
-		container := newContainer()
+		// container := newContainer()
 		// Wait on keyboard input. Exit with Control-C.
 		// Iterate through file path args to make file writers
 		for i := 0; i < len(args); i++ {
@@ -250,7 +265,7 @@ func main() {
 				fmt.Fprintln(os.Stderr, "Ignoring globbing path", args[i])
 				continue
 			}
-			_, err := container.addFileWriter(args[i], appendFlag)
+			_, err := fileContainer.addFileWriter(args[i], appendFlag)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "Probem obtaining fileWriter for pth", args[i])
 			}
@@ -258,15 +273,17 @@ func main() {
 		for {
 			// Read new line of input
 			input, isPrefix, err := readWriter.ReadLine()
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
+			if err != nil && err != io.EOF {
+				fmt.Fprintln(os.Stderr, err.Error())
+				break
 			}
+
 			if isPrefix {
 				fmt.Fprintln(os.Stderr, "line too long")
 			}
 			// Write line of input to all fileWriters
-			for i := 0; i < len(container.fileWriters); i++ {
-				fileWriter := container.fileWriters[i]
+			for i := 0; i < len(fileContainer.fileWriters); i++ {
+				fileWriter := fileContainer.fileWriters[i]
 				if fileWriter.active {
 					err := fileWriter.write(
 						[]byte(
@@ -284,39 +301,43 @@ func main() {
 		}
 	}
 
-	container := newContainer()
 	// Iterate through file path args
 	for i := 0; i < len(args); i++ {
 		if strings.Contains(args[i], "*") {
 			fmt.Fprintln(os.Stderr, "Ignoring globbing path", args[i])
 			continue
 		}
-		_, err := container.addFileWriter(args[i], appendFlag)
+		_, err := fileContainer.addFileWriter(args[i], appendFlag)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Probem obtaining fileWriter for pth", args[i])
 		}
 	}
-	if len(container.fileWriters) == 0 {
+	if len(fileContainer.fileWriters) == 0 {
 		fmt.Fprintln(os.Stderr, "No valid files to save to")
 		os.Exit(1)
 	}
 
 	buf := make([]byte, 2048)
 	count := 0
-	eof := false // eof indicates actual ending of input (plus err.EOF)
+	// eof := false // eof indicates actual ending of input (plus err.EOF)
 	for {
+		if stop {
+			break
+		}
 		n, err := readWriter.Read(buf)
 		if err != nil && err != io.EOF {
 			fmt.Fprintln(os.Stderr, err.Error())
 			break
 		}
 		if n == 0 && err == io.EOF {
-			eof = true
+			// Ignore interrupt
+			// if !ignoreFlag {
 			break
+			// }
 		}
 		// Send bytes to each file fileWriter
-		for i := 0; i < len(container.fileWriters); i++ {
-			fileWriter := container.fileWriters[i]
+		for i := 0; i < len(fileContainer.fileWriters); i++ {
+			fileWriter := fileContainer.fileWriters[i]
 			if fileWriter.active {
 				err := fileWriter.write(buf[0:n])
 				fileWriter.writer.Flush()
@@ -334,15 +355,7 @@ func main() {
 	}
 
 	readWriter.Flush()
-	for _, s := range container.fileWriters {
+	for _, s := range fileContainer.fileWriters {
 		s.close()
-	}
-
-	// If we have received an EOF we don't need to hang around.
-	if ignoreFlag && !eof {
-		// Wait for sigint, or with -i option, kill. Doing it this way allows
-		// the interrupt handler to work and for the channel to prevent exit
-		// here on interrupt.
-		doneChannel <- true
 	}
 }
