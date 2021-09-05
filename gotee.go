@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"time"
 
 	"github.com/jwalton/gchalk"
 )
@@ -37,7 +38,6 @@ var doneChannel = make(chan bool)
 
 var readWriter *bufio.ReadWriter
 var fileContainer *container
-var stop bool
 
 // var eof bool = false
 
@@ -59,7 +59,8 @@ func ignoreSignal() {
 	signal.Notify(c, os.Interrupt)
 	go func() {
 		for sig := range c {
-			stop = true
+			time.Sleep(100 * time.Millisecond)
+			// stop = true
 			readWriter.Writer.Flush()
 			for _, s := range fileContainer.fileWriters {
 				s.close()
@@ -248,9 +249,23 @@ func main() {
 		printHelp(out)
 	}
 
-	// Handle ignoring signals if flag is set
+	// Handle ignoring signals if flag is set. I am not sure what the ignore
+	// flag does on the original tee, but here we can at least clean up then exit.
 	if ignoreFlag == true {
-		ignoreSignal()
+		fmt.Println("ignore")
+		// ignoreSignal()
+		signal.Notify(c, os.Interrupt)
+		go func() {
+			for sig := range c {
+				fmt.Fprintln(os.Stderr, colour(brightRed, "got signal", sig.String()))
+				time.Sleep(100 * time.Millisecond)
+				readWriter.Writer.Flush()
+				for _, s := range fileContainer.fileWriters {
+					s.close()
+				}
+				os.Exit(0)
+			}
+		}()
 	}
 
 	// Use stdin if available, otherwise exit, as stdin is what this is all about.
@@ -271,12 +286,26 @@ func main() {
 			}
 		}
 		for {
+			// _, err := os.Stdin.Stat()
+			// if err != nil {
+			// 	fmt.Println("error in stdin")
+			// 	break
+			// }
 			// Read new line of input
 			input, isPrefix, err := readWriter.ReadLine()
 			if err != nil && err != io.EOF {
 				fmt.Fprintln(os.Stderr, err.Error())
 				break
 			}
+			if err != nil {
+				fmt.Println(err)
+			}
+			//  else {
+			// 	fmt.Println("stdin is from a terminal")
+			// }
+			// if err == io.EOF {
+			// 	fmt.Println("EOF")
+			// }
 
 			if isPrefix {
 				fmt.Fprintln(os.Stderr, "line too long")
@@ -321,19 +350,13 @@ func main() {
 	count := 0
 	// eof := false // eof indicates actual ending of input (plus err.EOF)
 	for {
-		if stop {
-			break
-		}
 		n, err := readWriter.Read(buf)
 		if err != nil && err != io.EOF {
 			fmt.Fprintln(os.Stderr, err.Error())
 			break
 		}
 		if n == 0 && err == io.EOF {
-			// Ignore interrupt
-			// if !ignoreFlag {
 			break
-			// }
 		}
 		// Send bytes to each file fileWriter
 		for i := 0; i < len(fileContainer.fileWriters); i++ {
@@ -358,4 +381,10 @@ func main() {
 	for _, s := range fileContainer.fileWriters {
 		s.close()
 	}
+	// if ignoreFlag {
+	// 	// Wait for sigint, or with -i option, kill. Doing it this way allows
+	// 	// the interrupt handler to work and for the channel to prevent exit
+	// 	// here on interrupt.
+	// 	doneChannel <- true
+	// }
 }

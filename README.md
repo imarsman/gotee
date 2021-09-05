@@ -18,12 +18,13 @@ output. This is not something I have seen on any other implementations.
 * `gotee -h` print usage
 * `gotee -a` append to existing files
 * `gotee -i` ignore sigint
-  * this is an interesting one. The outcome of using this option is that you
-      have to kill the process, as sigint (Control-C) is ignored. As far as I can
-      tell I have implemented this correctly. The way that I got this working
-      required an added channel wait in the case of the use of the `-i` (ignore)
-      flag. I am not sure I handled this right or at least am not sure I
-      understand why usng the conditional channel wait was required.
+  * I don't quite know what to do with this. I have currently implemented this
+    flag to detect an interrupt and try to cleanly shut everything down. If an
+    interrupt is received that means that whatever is piping to standard input
+    would have been shut down and therefore there would be no standard input to
+    recieve. I would be happy to be corrected on this. In theory I could make
+    the loop through standard input a function internal to main and restart that
+    function on interrupt, but I don't see the point of that.
 * `gotee -S` do not forward standard input to standard output
 * `gotee <file1> <file2>` - write to all files in list
 
