@@ -37,7 +37,7 @@ The official `tee` waits for stdin even when nothing has been sent to it. I've
 added support for waiting on keyboard input for string data. Control-C works to
 exit this. So although this is reading input as a string, this is likely not
 harmful. The main stdin reader reads in bytes and thus can handle `cat test.jpg
-| gotee out.jpg`.
+| gotee -S out.jpg`.
 
 This works to mimic `command | gotee -S out.txt`
 
