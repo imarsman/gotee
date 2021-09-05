@@ -204,10 +204,6 @@ func main() {
 	var stdoutFlag bool
 	flag.BoolVar(&stdoutFlag, "S", false, "do not forward standard input to standard output")
 
-	// Not using ignore as I don't know what it is good for
-	// var ignoreFlag bool
-	// flag.BoolVar(&ignoreFlag, "i", false, "ignore interrupt")
-
 	var appendFlag bool
 	flag.BoolVar(&appendFlag, "a", false, "append to files if they already exist")
 
@@ -313,11 +309,9 @@ func main() {
 		}
 	}
 	if len(fileContainer.fileWriters) == 0 {
+		fmt.Fprintln(os.Stderr, colour(brightRed, "no files to write to"))
 		exitStatus = 1
 		os.Exit(exitStatus)
-	}
-	for _, v := range fileContainer.fileWriters {
-		fmt.Fprintln(os.Stderr, "File", v.file.Name())
 	}
 
 	buf := make([]byte, 2048)
