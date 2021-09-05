@@ -227,21 +227,29 @@ func main() {
 	}
 
 	// Handle ignoring signals if flag is set. I am not sure what the ignore
-	// flag does on the original tee, but here we can at least clean up then exit.
-	if ignoreFlag == true {
-		signal.Notify(c, os.Interrupt)
-		go func() {
-			for sig := range c {
-				fmt.Fprintln(os.Stderr, colour(brightRed, "got signal", sig.String()))
-				time.Sleep(100 * time.Millisecond)
-				readWriter.Writer.Flush()
-				for _, s := range fileContainer.fileWriters {
-					s.close()
-				}
-				os.Exit(0)
+	// flag does on the original tee, but here we can at least clean up then
+	// exit.
+	// NOTE: making this default unless and until a good reason to do things
+	// differently is discovered.
+	// if ignoreFlag == true {
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for sig := range c {
+			// Block writing to stdErr
+			// There may be a better way to allow sig to be defined
+			stdErr := os.Stderr
+			os.Stderr = nil
+			fmt.Fprintln(os.Stderr, colour(brightRed, "got signal", sig.String()))
+			time.Sleep(100 * time.Millisecond)
+			readWriter.Writer.Flush()
+			for _, s := range fileContainer.fileWriters {
+				s.close()
 			}
-		}()
-	}
+			os.Stderr = stdErr
+			os.Exit(0)
+		}
+	}()
+	// }
 
 	// Use stdin if available, otherwise exit, as stdin is what this is all about.
 	stat, _ := os.Stdin.Stat()
@@ -352,11 +360,11 @@ func main() {
 		count++
 	}
 
-	// Shut down as cleanluy as possible on interrupt even without the -i flag
-	readWriter.Flush()
-	for _, s := range fileContainer.fileWriters {
-		s.close()
-	}
+	// // Shut down as cleanluy as possible on interrupt even without the -i flag
+	// readWriter.Flush()
+	// for _, s := range fileContainer.fileWriters {
+	// 	s.close()
+	// }
 
 	// if ignoreFlag {
 	// 	// Wait for sigint, or with -i option, kill. Doing it this way allows
