@@ -1,9 +1,10 @@
 # tee (gotee)
 An implementation of tee in Go.
 
-This program, which is by no means original, takes in standard input and for
-each file specified either appends or writes to each file until the standard
-input is done. As it does so it passes out what is read to standard output.
+This program, an implementation of the tee command, first available in 1974,
+takes in standard input and for each file specified either appends or writes to
+each file until the standard input is done. As it does so it passes out what is
+read to standard output.
 
 The `tee` command is a handy way, and one of the only ways to branch standard
 input to save to one or more files and to reproduce standard input as standard

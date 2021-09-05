@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/signal"
 	"strings"
-	"time"
 
 	"github.com/jwalton/gchalk"
 )
@@ -37,6 +36,7 @@ var doneChannel = make(chan bool)
 
 var readWriter *bufio.ReadWriter
 var fileContainer *container
+var exitStatus = 0
 
 func init() {
 	c = make(chan os.Signal, 1)
@@ -240,13 +240,14 @@ func main() {
 			stdErr := os.Stderr
 			os.Stderr = nil
 			fmt.Fprintln(os.Stderr, colour(brightRed, "got signal", sig.String()))
-			time.Sleep(100 * time.Millisecond)
 			readWriter.Writer.Flush()
 			for _, s := range fileContainer.fileWriters {
 				s.close()
 			}
 			os.Stderr = stdErr
-			os.Exit(0)
+
+			exitStatus = 1
+			os.Exit(exitStatus)
 		}
 	}()
 
@@ -259,35 +260,22 @@ func main() {
 		// Iterate through file path args to make file writers
 		for i := 0; i < len(args); i++ {
 			if strings.Contains(args[i], "*") {
-				fmt.Fprintln(os.Stderr, "Ignoring globbing path", args[i])
+				exitStatus = 1
 				continue
 			}
 			_, err := fileContainer.addFileWriter(args[i], appendFlag)
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "Probem obtaining fileWriter for pth", args[i])
+				exitStatus = 1
+				continue
 			}
 		}
 		for {
-			// _, err := os.Stdin.Stat()
-			// if err != nil {
-			// 	fmt.Println("error in stdin")
-			// 	break
-			// }
 			// Read new line of input
 			input, isPrefix, err := readWriter.ReadLine()
 			if err != nil && err != io.EOF {
-				fmt.Fprintln(os.Stderr, err.Error())
-				break
+				exitStatus = 1
+				os.Exit(exitStatus)
 			}
-			if err != nil {
-				fmt.Println(err)
-			}
-			//  else {
-			// 	fmt.Println("stdin is from a terminal")
-			// }
-			// if err == io.EOF {
-			// 	fmt.Println("EOF")
-			// }
 
 			if isPrefix {
 				fmt.Fprintln(os.Stderr, "line too long")
@@ -304,7 +292,7 @@ func main() {
 							)))
 					fileWriter.writer.Flush()
 					if err != nil {
-						fmt.Fprintln(os.Stderr, err)
+						exitStatus = 1
 						fileWriter.active = false
 					}
 				}
@@ -315,17 +303,21 @@ func main() {
 	// Iterate through file path args
 	for i := 0; i < len(args); i++ {
 		if strings.Contains(args[i], "*") {
-			fmt.Fprintln(os.Stderr, "Ignoring globbing path", args[i])
+			exitStatus = 1
 			continue
 		}
 		_, err := fileContainer.addFileWriter(args[i], appendFlag)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "Probem obtaining fileWriter for pth", args[i])
+			exitStatus = 1
+			continue
 		}
 	}
 	if len(fileContainer.fileWriters) == 0 {
-		fmt.Fprintln(os.Stderr, "No valid files to save to")
-		os.Exit(1)
+		exitStatus = 1
+		os.Exit(exitStatus)
+	}
+	for _, v := range fileContainer.fileWriters {
+		fmt.Fprintln(os.Stderr, "File", v.file.Name())
 	}
 
 	buf := make([]byte, 2048)
@@ -359,16 +351,5 @@ func main() {
 		count++
 	}
 
-	// // Shut down as cleanluy as possible on interrupt even without the -i flag
-	// readWriter.Flush()
-	// for _, s := range fileContainer.fileWriters {
-	// 	s.close()
-	// }
-
-	// if ignoreFlag {
-	// 	// Wait for interupt, or with -i option, kill. Doing it this way allows
-	// 	// the interrupt handler to work and for the channel to prevent exit
-	// 	// here on interrupt.
-	// 	doneChannel <- true
-	// }
+	os.Exit(exitStatus)
 }
