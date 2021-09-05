@@ -196,6 +196,7 @@ func main() {
 	var helpFlag bool
 	flag.BoolVar(&helpFlag, "h", false, "print usage")
 
+	// Colour output only written to stderr. Otherwise verbatim input to output.
 	// var noColourFlag bool
 	// flag.BoolVar(&noColourFlag, "C", false, "no colour output")
 	// useColour = !noColourFlag
