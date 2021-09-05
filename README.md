@@ -18,8 +18,10 @@ something I have seen on any other implementations.
 * `gotee` no files specified - use keyboard input instead of stdin and exit on
   Control-C
 * `gotee <file1> <file2>` - write to one or more files specified as last arguments
-* `gotee -a <file> <file>` append to existing files
-* `gotee -i` ignore interrupt - not implemented but is in original tee
+* `gotee -a <file> <file>` - append to existing files and if not existing create
+  new files
+* `gotee -S <file> <file>` - do not forward standard input to standard output
+* `gotee -i` - ignore interrupt. Not implemented but is in original tee
   * I don't quite know what to do with this. If an interrupt is received that
     means that whatever is piping to standard input would have been shut down
     and therefore there would be no standard input to recieve. I would be happy
@@ -28,14 +30,14 @@ something I have seen on any other implementations.
     but I don't see the point of that. What I have done is in all cases
     intercept an interrupt signal and shut things down as gracefully as
     possible.
-* `gotee -S <file> <file>` do not forward standard input to standard output
 
-## Noets
+## Notes
 
 The official `tee` waits for stdin even when nothing has been sent to it. I've
-added support for waiting on keyboard input for string data. CTL-C works to exit
-this. So although this is using input as a string, this is likely not harmful.
-The main stdin reader can handle `cat test.jpg | gotee out.jpg`.
+added support for waiting on keyboard input for string data. Control-C works to
+exit this. So although this is reading input as a string, this is likely not
+harmful. The main stdin reader reads in bytes and thus can handle `cat test.jpg
+| gotee out.jpg`.
 
 This works to mimic `command | gotee -S out.txt`
 
