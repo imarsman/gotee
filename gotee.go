@@ -216,7 +216,6 @@ func main() {
 
 	// args are interpreted as paths
 	args := flag.Args()
-	fmt.Println("args", args)
 
 	if helpFlag {
 		out := os.Stderr
