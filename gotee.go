@@ -377,10 +377,12 @@ func main() {
 		count++
 	}
 
+	// Shut down as cleanluy as possible on interrupt even without the -i flag
 	readWriter.Flush()
 	for _, s := range fileContainer.fileWriters {
 		s.close()
 	}
+
 	// if ignoreFlag {
 	// 	// Wait for sigint, or with -i option, kill. Doing it this way allows
 	// 	// the interrupt handler to work and for the channel to prevent exit
