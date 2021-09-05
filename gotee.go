@@ -24,11 +24,10 @@ const (
 // This package is designed to allow for easy intake of standard input and
 // logical writing of the contents of standard intput to one or more files
 // specified by the invocation of this command. Most of the logic happens at the
-// end of the main method.
-// This initially was supposed to use channels for data passing, but the
-// iterative nature of the processing of incoming data allows for a less complex
-// method of sending the bytes currently being processed to each file being
-// written.
+// end of the main method. The reading of standard input (not from keyboard) is
+// an iterative process, so writes can be done for each file in sequence. If
+// there turn out to be concurrency issues channels can be used or some other
+// mechanism.
 
 var useColour = true // use colour - defaults to true
 var c chan (os.Signal)
@@ -39,8 +38,6 @@ var doneChannel = make(chan bool)
 var readWriter *bufio.ReadWriter
 var fileContainer *container
 
-// var eof bool = false
-
 func init() {
 	c = make(chan os.Signal, 1)
 	fileContainer = newContainer()
@@ -49,26 +46,6 @@ func init() {
 	bw := bufio.NewWriter(os.Stdout)
 
 	readWriter = bufio.NewReadWriter(br, bw)
-}
-
-// Implement -i flag - ignore sigint
-func ignoreSignal() {
-	// Intercept the sigint interrupt signal. I think the idea with the original
-	// tee command -i flag is to allow for a graceful exit. This perhaps should
-	// be default behaviour with follow.
-	signal.Notify(c, os.Interrupt)
-	go func() {
-		for sig := range c {
-			time.Sleep(100 * time.Millisecond)
-			// stop = true
-			readWriter.Writer.Flush()
-			for _, s := range fileContainer.fileWriters {
-				s.close()
-			}
-			fmt.Fprintln(os.Stderr, colour(brightRed, "got signal", sig.String()))
-			os.Exit(0)
-		}
-	}()
 }
 
 // fileWriter struct to help manage writing to a file
@@ -252,8 +229,6 @@ func main() {
 	// Handle ignoring signals if flag is set. I am not sure what the ignore
 	// flag does on the original tee, but here we can at least clean up then exit.
 	if ignoreFlag == true {
-		fmt.Println("ignore")
-		// ignoreSignal()
 		signal.Notify(c, os.Interrupt)
 		go func() {
 			for sig := range c {
