@@ -155,27 +155,28 @@ func (c *container) close() {
 	}
 }
 
-func colour(colour int, input ...string) string {
+func colour(colour int, input ...string) (output string) {
 	str := fmt.Sprint(strings.Join(input, " "))
 	str = strings.Replace(str, "  ", " ", -1)
 
+	output = str
 	if !useColour {
-		return str
+		return
 	}
 
 	// Choose colour for output or none
 	switch colour {
 	case brightGreen:
-		return gchalk.BrightGreen(str)
+		output = gchalk.BrightGreen(str)
 	case brightYellow:
-		return gchalk.BrightYellow(str)
+		output = gchalk.BrightYellow(str)
 	case brightBlue:
-		return gchalk.BrightBlue(str)
+		output = gchalk.BrightBlue(str)
 	case brightRed:
-		return gchalk.BrightRed(str)
-	default:
-		return str
+		output = gchalk.BrightRed(str)
 	}
+
+	return
 }
 
 // printHelp print out simple help output
