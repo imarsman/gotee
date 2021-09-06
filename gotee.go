@@ -95,16 +95,17 @@ func newFileWriter(path string, append bool) (writer *fileWriter, err error) {
 }
 
 // write write bytes to the bufio.Writer
-func (s *fileWriter) write(bytes []byte) error {
-	if _, err := s.writer.Write(bytes); err != nil {
+func (s *fileWriter) write(bytes []byte) (err error) {
+	if _, err = s.writer.Write(bytes); err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		return err
+		return
 	}
-	if err := s.writer.Flush(); err != nil {
+	if err = s.writer.Flush(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		return err
+		return
 	}
-	return nil
+
+	return
 }
 
 // close close the underlying writer
