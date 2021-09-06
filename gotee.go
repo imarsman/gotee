@@ -56,43 +56,42 @@ type fileWriter struct {
 }
 
 // newFileWriter properly initialize a new fileWriter, including catching errors
-func newFileWriter(path string, append bool) (*fileWriter, error) {
-	s := new(fileWriter)
+func newFileWriter(path string, append bool) (writer *fileWriter, err error) {
 
-	var err error
+	writer = new(fileWriter)
 	mode := os.O_APPEND
 	if append == false {
 		mode = os.O_CREATE
 	}
 	if _, err = os.Stat(path); err != nil {
 		mode = os.O_CREATE
-		s.file, err = os.Create(path)
+		writer.file, err = os.Create(path)
 		if err != nil {
 			// Something wrong like bad file path
 			fmt.Fprintln(os.Stderr, err.Error())
-			return nil, err
+			return
 		}
 	} else {
 		if append == false {
-			s.file, err = os.Create(path)
+			writer.file, err = os.Create(path)
 			if err != nil {
 				// Something wrong like bad file path
 				fmt.Fprintln(os.Stderr, err.Error())
-				return nil, err
+				return
 			}
 		}
 	}
 
-	s.active = true
-	s.file, err = os.OpenFile(path, mode|os.O_WRONLY, 0644)
+	writer.active = true
+	writer.file, err = os.OpenFile(path, mode|os.O_WRONLY, 0644)
 	if err != nil {
 		// Something wrong like bad file path
 		fmt.Fprintln(os.Stderr, err.Error())
 		return nil, err
 	}
-	s.writer = bufio.NewWriter(s.file)
+	writer.writer = bufio.NewWriter(writer.file)
 
-	return s, nil
+	return
 }
 
 // write write bytes to the bufio.Writer
@@ -130,15 +129,15 @@ func newContainer() *container {
 }
 
 // addFileWriter add a fileWriter to the container's slice
-func (c *container) addFileWriter(path string, appendToFile bool) (*fileWriter, error) {
-	fileWriter, err := newFileWriter(path, appendToFile)
+func (c *container) addFileWriter(path string, appendToFile bool) (writer *fileWriter, err error) {
+	writer, err = newFileWriter(path, appendToFile)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Probem obtaining fileWriter for pth", path)
 		return nil, err
 	}
-	c.fileWriters = append(c.fileWriters, fileWriter)
+	c.fileWriters = append(c.fileWriters, writer)
 
-	return fileWriter, nil
+	return
 }
 
 // write incoming bytes to all fileWriters
