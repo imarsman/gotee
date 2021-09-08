@@ -44,4 +44,10 @@ This works to mimic `command | gotee -S out.txt`
 
 `command | dd status=none of=out.txt`
 
+## Notes
+
+The argument parsing library used here does not deal with arguments such as -1,
+-2, -, etc. It may be that an argument will need to have a different identifier to
+work around this.
+
 -- Ian Marsman
